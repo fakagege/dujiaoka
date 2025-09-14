@@ -127,7 +127,7 @@
                                             required>
                                         <option value="">请选择支付方式</option>
                                         @php
-                                            $payMethods = \App\Models\Pay::where('status', 1)->get();
+                                            $payMethods = \App\Models\Pay::where('enable', 1)->get();
                                         @endphp
                                         @foreach($payMethods as $pay)
                                             <option value="{{ $pay->id }}" {{ old('pay_id') == $pay->id ? 'selected' : '' }}>
