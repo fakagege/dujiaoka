@@ -130,7 +130,7 @@ class UserCenterController extends Controller
     }
     public function recharge()
     {
-        // 添加支付方式查询，并过滤 enable=1
+        // 添加支付方式查询，并过滤 enable=1，只有开启了支付的才能充值
         $payMethods = \App\Models\Pay::where('enable', 1)->get();
         return view('themes.morpho.views.user.recharge', compact('payMethods'));
     }
