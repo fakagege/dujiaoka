@@ -26,10 +26,11 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        \Log::info('ADMIN_ROUTE_PREFIX: ' . config('app.admin_route_prefix', 'admin')); // 调试
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path(config('app.admin_route_prefix', 'admin')) // 动态读取配置
             ->login(Login::class)
             ->colors([
                 'primary' => Color::Amber,
@@ -61,7 +62,6 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            // 性能优化配置
             ->spa()
             ->unsavedChangesAlerts()
             ->databaseNotifications()
@@ -80,6 +80,6 @@ class AdminPanelProvider extends PanelProvider
                 '外观设置',
                 '店铺设置',
                 '其他配置'
-            ]);  // 导航分组
+            ]);
     }
 }
