@@ -32,7 +32,6 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $this->ensureIsNotRateLimited($request);
-
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -48,12 +47,10 @@ class AuthController extends Controller
             $user->updateLastLogin($request->ip());
             
             RateLimiter::clear($this->throttleKey($request));
-
             return redirect()->intended(route('user.center'));
         }
 
         RateLimiter::hit($this->throttleKey($request));
-
         throw ValidationException::withMessages([
             'email' => __('auth.failed'),
         ]);
@@ -64,7 +61,6 @@ class AuthController extends Controller
         if (Auth::guard('web')->check()) {
             return redirect()->route('user.center');
         }
-
         return view('themes.morpho.views.auth.auth');
     }
 
@@ -78,7 +74,6 @@ class AuthController extends Controller
         ]);
 
         $defaultLevel = UserLevel::where('status', 1)->orderBy('min_spent')->first();
-
         $user = User::create([
             'email' => $request->email,
             'password' => Hash::make($request->password),
@@ -89,8 +84,14 @@ class AuthController extends Controller
             'total_spent' => 0,
         ]);
 
-        event(new Registered($user));
+        // 捕获邮件发送异常，确保注册和登录不受影响
+        try {
+            event(new Registered($user));
+        } catch (\Exception $e) {
+            \Log::error('Failed to send verification email: ' . $e->getMessage());
+        }
 
+        // 自动登录
         Auth::guard('web')->login($user);
 
         return redirect()->route('user.center')->with('success', '注册成功！');
@@ -104,11 +105,9 @@ class AuthController extends Controller
     public function sendPasswordResetLink(Request $request)
     {
         $request->validate(['email' => 'required|email']);
-
         $status = Password::broker('users')->sendResetLink(
             $request->only('email')
         );
-
         return $status === Password::RESET_LINK_SENT
             ? back()->with(['status' => __($status)])
             : back()->withErrors(['email' => __($status)]);
@@ -136,7 +135,6 @@ class AuthController extends Controller
                 $user->forceFill([
                     'password' => Hash::make($password)
                 ])->setRememberToken(Str::random(60));
-
                 $user->save();
             }
         );
@@ -149,10 +147,8 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::guard('web')->logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
         return redirect()->route('home');
     }
 
@@ -161,9 +157,7 @@ class AuthController extends Controller
         if (! RateLimiter::tooManyAttempts($this->throttleKey($request), 5)) {
             return;
         }
-
         $seconds = RateLimiter::availableIn($this->throttleKey($request));
-
         throw ValidationException::withMessages([
             'email' => trans('auth.throttle', [
                 'seconds' => $seconds,
@@ -182,35 +176,29 @@ class AuthController extends Controller
         if ($request->user()->hasVerifiedEmail()) {
             return redirect()->route('user.center');
         }
-
         $request->user()->sendEmailVerificationNotification();
-
         return back()->with('message', '验证邮件已发送！');
     }
 
     public function verify(Request $request, $id, $hash)
     {
         $user = User::findOrFail($id);
-
         if (! hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
             abort(403, '无效的验证链接');
         }
-
         if ($user->hasVerifiedEmail()) {
             return redirect()->route('user.center')->with('message', '邮箱已经验证过了');
         }
-
         if ($user->markEmailAsVerified()) {
             event(new Verified($user));
         }
-
         return redirect()->route('user.center')->with('success', '邮箱验证成功！');
     }
 
     public function showVerifyNotice(Request $request)
     {
-        return $request->user()->hasVerifiedEmail() 
-            ? redirect()->route('user.center') 
+        return $request->user()->hasVerifiedEmail()
+            ? redirect()->route('user.center')
             : view('themes.morpho.views.auth.verify-email');
     }
 
@@ -219,9 +207,7 @@ class AuthController extends Controller
         if ($request->user()->hasVerifiedEmail()) {
             return redirect()->route('user.center');
         }
-
         $request->user()->sendEmailVerificationNotification();
-
         return back()->with('message', '验证链接已重新发送！');
     }
 }
